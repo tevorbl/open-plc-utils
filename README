@@ -1,20 +1,21 @@
 
-   ##Internet homeplug for linux
+                                              Internet homeplug for linux
+                                              
 
 This is a clone of Qualcomm's linux homeplug tools.
 This provides low-level tools for managing homeplug devices that use their chips.
 
 I've added 2 bash scripts that make the tools easier to use:
 
--   **homeplug.sh**
+-   homeplug.sh
    View the homeplug network attached to your computer
 
--   **update.sh**
+-   update.sh
    Update the device firmware.
    This includes modifying the firmware to preserve the device parameters.
 
-   Tested on TP-Link AV600 network.
-   Please read comments inside the shell scripts before using.
+Tested on TP-Link AV600 network.
+Please read comments inside the shell scripts before using.
 
 This work is based on Fitzcarraldo' blogs:
 - https://fitzcarraldoblog.wordpress.com/2021/04/23/using-open-plc-utils-in-linux-with-powerline-homeplug-adapters/
