@@ -34,7 +34,7 @@ if [ -z "$1" ]; then
     else
         echo "uncomment variable DRYRUN near top of file to dry run without updating device"
     fi
-    exit
+    exit 0
 fi
 
 
@@ -42,22 +42,22 @@ fi
 export PLC=$(plcdevs | awk 'NF>3 {print $1}')
 if [ -z "$PLC" ]; then
     echo "no homeplug device found - quitting"
-    exit
+    exit 1
 fi
 
 if [ $( int6k -i $PLC -qI local | wc -l ) -ge 2 ]; then
     echo support for this device is not implemented, but probably could be.
     echo this script needs to use int6k & friends
-    exit
+    exit 1
 elif [ $( amptool -i $PLC -qI local | wc -l ) -ge 2 ]; then
     echo support for this device is not implemented, but probably could be.
     echo this script needs to use amptool & friends
-    exit
+    exit 1
 elif [ $( plctool -i $PLC -qI local | wc -l ) -ge 2 ]; then
     echo "the local device uses chipset $(plctool -i $PLC -qr local | awk -F ' ' '{print $3}')"
 else
     echo "unable to determine chipset for local HomePlug wall adapter - quitting"
-    exit
+    exit 1
 fi
 
 
@@ -77,7 +77,7 @@ elif chknvm -q $1; then
     chknvm -mv $NEWNVM > $NEWNVM.txt
 else
     echo $1 is not a pib or nvm file - quitting
-    exit
+    exit 1
 fi
 
 
@@ -85,7 +85,7 @@ if [ -n "$2" ]; then
     if chkpib -q $2; then
         if [ -n "$NEWPIBNAME" ]; then
             echo cannot have $NEWPIBNAME and $2 both pib files - quitting
-            exit
+            exit 1
         fi
         NEWPIBNAME=$2
         echo using pib file $NEWPIBNAME
@@ -95,7 +95,7 @@ if [ -n "$2" ]; then
     elif chknvm -q $2; then
         if [ -n "$NEWNVMNAME" ]; then
             echo cannot have $NEWNVMNAME and $2 both nvm files - quitting
-            exit
+            exit 1
         fi
         NEWNVMNAME=$2
         echo using nvm file $NEWNVMNAME
@@ -104,7 +104,7 @@ if [ -n "$2" ]; then
         chknvm -mv $NEWNVM > $NEWNVM.txt
     else
         echo $2 is not a valid file - quitting
-        exit
+        exit 1
     fi
 fi
 
@@ -128,14 +128,18 @@ if [ -n "$NEWPIB" ]; then
     # read pib from attached device, save it to $DEVPIB
     DEVPIB=$(mktemp -t XXXXXX.pib)
     plctool -i $PLC -p $DEVPIB $MAC
+    if [ ! $? ]; then
+        echo unable to read parameter information block from device - quitting
+        exit 1
+    fi
 
     chkpib -mv $DEVPIB > $DEVPIB.txt
     if [ ! $? ]; then
-        echo unable to read parameter information block from device - quitting
-        exit
+        echo device contains bad parameter information block - quitting
+        exit 1
     fi
 
-    echo device has pib
+    echo device has a valid pib
     grep 'Build Description' $DEVPIB.txt
 
 
@@ -166,7 +170,7 @@ if [ -n "$NEWPIB" ]; then
         modpib -D $DAK -M $MAC -N $NMK $NEWPIB
         if [ ! $? ]; then
             echo "unable to modify pib - quitting"
-            exit
+            exit 1
         fi
         #chkpib -mv $NEWPIB > $NEWPIB.txt; kdiff3 --L1 "new" --L2 "existing" $NEWPIB.txt $DEVPIB.txt
 
@@ -191,7 +195,7 @@ if [ -n "$NVMOPT" ] || [ -n "$PIBOPT" ]; then
         echo updating device ...
     else
         echo quitting
-        exit
+        exit 1
     fi
 
     if [ -n "$DRYRUN" ]; then
@@ -210,6 +214,10 @@ if [ -n "$NVMOPT" ] || [ -n "$PIBOPT" ]; then
     fi
 
     $DRYRUN plctool -i $PLC $PIBOPT $NVMOPT $MAC
+    if [ ! $? ]; then
+        echo update attempt failed - quitting
+        exit 1
+    fi
 
     # from man plctool:
     # The previous command does not replace existing PIB values.
@@ -222,6 +230,10 @@ if [ -n "$NVMOPT" ] || [ -n "$PIBOPT" ]; then
     #
     if [ -n "$PIBOPT" ]; then
         $DRYRUN plctool -i $PLC $PIBOPT $MAC
+        if [ ! $? ]; then
+            echo attempt to update pib failed - quitting
+            exit 1
+        fi
     fi
 
     # the device has now reset, wait for it to start up again
@@ -235,6 +247,6 @@ fi
 
 rm -rf $NEWPIB $NEWPIB.txt $NEWNVM $NEWNVM.txt $DEVPIB $DEVPIB.txt
 
-exit
+exit 0
 
 ################## end of update.sh ##################
